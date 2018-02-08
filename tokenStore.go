@@ -10,20 +10,29 @@ import (
 )
 
 type TokenStore struct {
-	FileName string
+	fileName string
+}
+
+func NewTokenStore(fileName string) *TokenStore {
+
+	return &TokenStore{
+		fileName: fileName,
+	}
 }
 
 func (s *TokenStore) Save(token *oauth2.Token) {
+
 	b, err := json.Marshal(token)
 	if err != nil {
 		log.Fatal(err)
 	}
-	ioutil.WriteFile(s.FileName, b, os.ModePerm)
+	ioutil.WriteFile(s.fileName, b, os.ModePerm)
 }
 
 func (s *TokenStore) Get() *oauth2.Token {
+
 	var token oauth2.Token
-	f, err := os.Open(s.FileName)
+	f, err := os.Open(s.fileName)
 	if err != nil {
 		log.Println(err)
 		return nil

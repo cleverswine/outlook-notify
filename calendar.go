@@ -15,6 +15,7 @@ import (
 type CalDateTime string
 
 func (s CalDateTime) Time() time.Time {
+
 	frontPart := strings.Split(string(s), ".")[0]
 	st, err := time.Parse("2006-01-02T15:04:05", frontPart)
 	if err != nil {
@@ -24,7 +25,8 @@ func (s CalDateTime) Time() time.Time {
 }
 
 func (s CalDateTime) TimeLocal(z string) time.Time {
-	location, _ := time.LoadLocation("America/Los_Angeles")
+
+	location, _ := time.LoadLocation(*localTZ)
 	return s.Time().In(location)
 }
 
@@ -80,6 +82,9 @@ func (evt *CalEvent) SendReminder() {
 	exec.Command("notify-send", "-i", *icon, evt.EventSubject, evt.String()).Run()
 	evt.ReminderSentAt = &n
 	evt.ReminderSentCount++
+	if *debug {
+		log.Printf("Sent notification for %s\n", evt.String())
+	}
 }
 
 func (s *Calendar) RemoveEvent(id string) {
@@ -144,7 +149,6 @@ func (s *Calendar) RefreshReminders(client *http.Client) error {
 	t := time.Now().UTC()
 	urlStr := fmt.Sprintf("https://outlook.office.com/api/beta/me/ReminderView(StartDateTime='%s',EndDateTime='%s')",
 		t.Format(time.RFC3339), t.Add(s.lookAheadInterval).Format(time.RFC3339))
-	fmt.Println(urlStr)
 
 	resp, err := client.Get(urlStr)
 	if err != nil {

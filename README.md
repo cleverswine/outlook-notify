@@ -1,36 +1,55 @@
-# Outlook Event Notifier (for Linux)
+# Outlook Reminder Notifications (for Linux)
 
-This application uses OpenID Connect to fetch an offline token (token + refresh token). On initial run, you will have to visit http://localhost:5500 and then log in to your MS account. After that, the token is stored locally (**not securely** in this version).
+This application monitors an Office365 Outlook calendar and sends "toast" notifications based on appointment reminder settings.
 
-Notifications are sent using the linux command `notify-send`.
+Notifications are sent using the linux command `notify-send` and appear in the notification area of the taskbar.
 
-Tested on Linux Mint 18.3.
+Tested on Linux Mint 18.3, but should work on any system/taskbar that responds to `notify-send`.
+
+## Install (WIP)
+
+* Set up an application registration in your MS Directory (any directory) with appropriate permissions ("Calendars.Read", "User.Read", "offline_access")
+* Build the application and run it, passing your application client ID and secret (see "Flags" and "Example" below)
+
+## Technology
+
+* [Outlook Calendar REST API](https://msdn.microsoft.com/en-us/office/office365/api/calendar-rest-operations)
+* [notify-send](https://ss64.com/bash/notify-send.html)
+
+## Authentication
+
+The application uses [OpenID Connect](https://openid.net/connect/) to fetch an offline token (token + refresh token) on behalf of a user. On initial run, you will have to visit http://localhost:5500/ and then log in to your MS account. After that, the token is stored locally (**not securely** in this version).
 
 ## Flags
 
 ```text
+Usage of ./outlook-notify:
   -client string
-        A client that is registered in MS AS with appropraite permissions
-  -debug
-        enable verbose logging
-  -http string
-        host:port to use for this application's http server (default "localhost:5500")
-  -icon string
-        Icon to use for notifications (default "/usr/share/icons/Mint-X-Dark/status/24/stock_appointment-reminder.png")
-  -lookahead int
-        Minutes of lookahead data to get from calendar (default 60)
+      A client that is registered in MS AS with appropraite permissions
   -secret string
-        The client secret
+      The client secret
   -tenant string
-        The MS directory to use for login (default "common")
+      The MS directory to use for login (default "common")
+  -lookahead int
+      Minutes of lookahead data to get from calendar (default 60)
+  -refresh int
+      Frequency of refreshing event data from the Graph API in minutes (default 15)
   -ticker int
-        Frequency of reminder checks in seconds (default 30)
+      Frequency of reminder checks in seconds (default 30)
+  -http string
+      host:port to use for this application's http server (default "localhost:5500")
+  -icon string
+      Icon to use for notifications (default "/usr/share/icons/Mint-X-Dark/status/24/stock_appointment-reminder.png")
   -timeformat string
-        Display format for reminder times (default "3:04PM")
+      Display format for reminder times (default "3:04PM")
+  -tz string
+      Local time zone (default "America/Los_Angeles")
+  -debug
+      enable verbose logging
 ```
 
 ## Example
 
 ```bash
-./outlook-notify -client "my-client" -secret "my-secret" -tenant "my-AD-tenant"
+./outlook-notify -client "my-client" -secret "my-secret" -tenant "my-AD-tenant" -debug
 ```

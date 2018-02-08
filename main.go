@@ -22,8 +22,10 @@ var (
 	icon                     = flag.String("icon", "/usr/share/icons/Mint-X-Dark/status/24/stock_appointment-reminder.png", "Icon to use for notifications")
 	timeFormat               = flag.String("timeformat", time.Kitchen, "Display format for reminder times")
 	tickerIntervalSecs       = flag.Int("ticker", 30, "Frequency of reminder checks in seconds")
+	refreshIntervalMinutes   = flag.Int("refresh", 15, "Frequency of refreshing event data from the Graph API in minutes")
 	lookAheadIntervalMinutes = flag.Int("lookahead", 60, "Minutes of lookahead data to get from calendar")
 	msTenant                 = flag.String("tenant", "common", "The MS directory to use for login")
+	localTZ                  = flag.String("tz", "America/Los_Angeles", "Local time zone")
 	debug                    = flag.Bool("debug", false, "enable verbose logging")
 )
 
@@ -42,7 +44,7 @@ func main() {
 	authURL := fmt.Sprintf("https://login.microsoftonline.com/%s/oauth2/v2.0", *msTenant)
 
 	calendar := NewCalendar(time.Minute * time.Duration(*lookAheadIntervalMinutes))
-	tokenStore := &TokenStore{FileName: "token.json"}
+	tokenStore := NewTokenStore("token.json")
 	token := tokenStore.Get()
 
 	config := oauth2.Config{
@@ -53,12 +55,21 @@ func main() {
 		Scopes:       []string{oidc.ScopeOpenID, "Calendars.Read", "User.Read", "offline_access"},
 	}
 
-	// cache upcoming events
-	calendar.RefreshReminders(config.Client(ctx, token))
-	// only notify about an empty token once
+	// go ahead and cache upcoming events if we have a token
+	if token == nil {
+		log.Println("No cached token found, sending notification")
+		exec.Command("notify-send", "Calendar", "No token found. Please visit "+appURL+" to get one.").Run()
+	} else {
+		err := calendar.RefreshReminders(config.Client(ctx, token))
+		if err != nil {
+			log.Println(err.Error())
+		}
+	}
+
+	// only notify about an empty token once during the ticker loop
 	notifiedAboutEmptyToken := false
 
-	refreshTicker := time.NewTicker(time.Minute * time.Duration(*lookAheadIntervalMinutes))
+	refreshTicker := time.NewTicker(time.Minute * time.Duration(*refreshIntervalMinutes))
 	defer refreshTicker.Stop()
 	go func() {
 		for _ = range refreshTicker.C {
@@ -103,13 +114,20 @@ func main() {
 			http.Error(w, "state did not match", http.StatusBadRequest)
 			return
 		}
-		oauth2Token, err := config.Exchange(ctx, r.URL.Query().Get("code"))
+		var err error
+		token, err = config.Exchange(ctx, r.URL.Query().Get("code"))
 		if err != nil {
 			http.Error(w, "Failed to exchange token: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
-		token = oauth2Token
 		tokenStore.Save(token)
+
+		// go ahead refresh reminders
+		err = calendar.RefreshReminders(config.Client(ctx, token))
+		if err != nil {
+			log.Println(err.Error())
+		}
+
 		w.Write([]byte("OK"))
 	})
 
