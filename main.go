@@ -6,9 +6,11 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"time"
 
+	"./calendar"
+	"./notify"
+	"./store"
 	oidc "github.com/coreos/go-oidc"
 	uuid "github.com/satori/go.uuid"
 	"golang.org/x/net/context"
@@ -19,12 +21,12 @@ var (
 	appHost                  = flag.String("http", "localhost:5500", "host:port to use for this application's http server")
 	clientID                 = flag.String("client", "", "A client that is registered in MS AS with appropraite permissions")
 	clientSecret             = flag.String("secret", "", "The client secret")
+	msTenant                 = flag.String("tenant", "common", "The MS directory to use for login")
 	icon                     = flag.String("icon", "/usr/share/icons/Mint-X-Dark/status/24/stock_appointment-reminder.png", "Icon to use for notifications")
 	timeFormat               = flag.String("timeformat", time.Kitchen, "Display format for reminder times")
 	tickerIntervalSecs       = flag.Int("ticker", 30, "Frequency of reminder checks in seconds")
 	refreshIntervalMinutes   = flag.Int("refresh", 15, "Frequency of refreshing event data from the Graph API in minutes")
 	lookAheadIntervalMinutes = flag.Int("lookahead", 60, "Minutes of lookahead data to get from calendar")
-	msTenant                 = flag.String("tenant", "common", "The MS directory to use for login")
 	localTZ                  = flag.String("tz", "America/Los_Angeles", "Local time zone")
 	debug                    = flag.Bool("debug", false, "enable verbose logging")
 )
@@ -43,11 +45,7 @@ func main() {
 	appURL := "http://" + *appHost
 	authURL := fmt.Sprintf("https://login.microsoftonline.com/%s/oauth2/v2.0", *msTenant)
 
-	calendar := NewCalendar(time.Minute * time.Duration(*lookAheadIntervalMinutes))
-	tokenStore := NewTokenStore("token.json")
-	token := tokenStore.Get()
-
-	config := oauth2.Config{
+	oauth2Config := &oauth2.Config{
 		ClientID:     *clientID,
 		ClientSecret: *clientSecret,
 		Endpoint:     oauth2.Endpoint{AuthURL: authURL + "/authorize", TokenURL: authURL + "/token"},
@@ -55,78 +53,78 @@ func main() {
 		Scopes:       []string{oidc.ScopeOpenID, "Calendars.Read", "User.Read", "offline_access"},
 	}
 
-	// go ahead and cache upcoming events if we have a token
-	if token == nil {
-		log.Println("No cached token found, sending notification")
-		exec.Command("notify-send", "Calendar", "No token found. Please visit "+appURL+" to get one.").Run()
-	} else {
-		err := calendar.RefreshReminders(config.Client(ctx, token))
-		if err != nil {
-			log.Println(err.Error())
+	// Watch for events
+	ch := make(chan *calendar.Event, 10)
+	defer close(ch)
+	go func() {
+		var notifier notify.Notifier
+		notifier = notify.NewNotifySend(*icon)
+		for evt := range ch {
+			fmt.Println(evt.Subject)
+			notifier.Send(evt.Subject, evt.String(*localTZ, *timeFormat))
 		}
+	}()
+
+	// Start up a new calendar process any time we get a new token
+	tokenCh := make(chan *oauth2.Token, 10)
+	defer close(tokenCh)
+	go func() {
+		var cal *calendar.Calendar
+		for token := range tokenCh {
+			log.Println("got a token")
+			if cal != nil {
+				cal.Stop()
+			}
+			cal = calendar.New(token, oauth2Config, *localTZ, ch)
+			go cal.Start(ctx,
+				time.Second*time.Duration(*tickerIntervalSecs),
+				time.Minute*time.Duration(*refreshIntervalMinutes),
+				time.Minute*time.Duration(*lookAheadIntervalMinutes))
+		}
+	}()
+
+	// if we have a cached token, use it
+	tokenStore := store.NewTokenStore("token.json")
+	token := tokenStore.Get()
+	if token != nil {
+		tokenCh <- token
 	}
 
-	// only notify about an empty token once during the ticker loop
-	notifiedAboutEmptyToken := false
-
-	refreshTicker := time.NewTicker(time.Minute * time.Duration(*refreshIntervalMinutes))
-	defer refreshTicker.Stop()
-	go func() {
-		for _ = range refreshTicker.C {
-			if token == nil && !notifiedAboutEmptyToken {
-				exec.Command("notify-send", "Calendar", "No token found. Please visit "+appURL+" to get one.")
-				notifiedAboutEmptyToken = true
-				continue
-			}
-			err := calendar.RefreshReminders(config.Client(ctx, token))
-			if err != nil {
-				exec.Command("notify-send", "Calendar", "Unable to get reminders: "+err.Error())
-				continue
-			}
-			tokenStore.Save(token)
-		}
-	}()
-
-	// look for events that need reminders to be shown
-	ticker := time.NewTicker(time.Second * time.Duration(*tickerIntervalSecs))
-	defer ticker.Stop()
-	go func() {
-		for _ = range ticker.C {
-			calendar.SendReminders()
-		}
-	}()
-
-	// everything below here is for acuiring the initial auth token
+	// everything below here is for acuiring a new auth token
 	var state string
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Nothing here"))
+	})
+
+	http.HandleFunc("/token", func(w http.ResponseWriter, r *http.Request) {
+		if *debug {
+			log.Println("redirecting from: " + r.URL.RequestURI())
+		}
 		stateUUID, err := uuid.NewV4()
 		if err != nil {
 			http.Error(w, "Failed to get state UUID: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 		state = stateUUID.String()
-		http.Redirect(w, r, config.AuthCodeURL(state), http.StatusFound)
+		http.Redirect(w, r, oauth2Config.AuthCodeURL(state), http.StatusFound)
 	})
 
 	http.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
+		if *debug {
+			log.Println("callback: " + r.URL.RequestURI())
+		}
 		if r.URL.Query().Get("state") != state {
 			http.Error(w, "state did not match", http.StatusBadRequest)
 			return
 		}
-		var err error
-		token, err = config.Exchange(ctx, r.URL.Query().Get("code"))
+		token, err := oauth2Config.Exchange(ctx, r.URL.Query().Get("code"))
 		if err != nil {
 			http.Error(w, "Failed to exchange token: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 		tokenStore.Save(token)
-
-		// go ahead refresh reminders
-		err = calendar.RefreshReminders(config.Client(ctx, token))
-		if err != nil {
-			log.Println(err.Error())
-		}
+		tokenCh <- token
 
 		w.Write([]byte("OK"))
 	})

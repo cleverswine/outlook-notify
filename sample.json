@@ -1,0 +1,53 @@
+{
+    "@odata.context": "https://outlook.office.com/api/beta/$metadata#Collection(Microsoft.OutlookServices.Reminder)",
+    "value": [
+        {
+            "EventId": "foo",
+            "ChangeKey": "foo",
+            "EventSubject": "foo",
+            "EventWebLink": "https://outlook.office365.com/owa/?itemid=foo&path=/calendar/item",
+            "EventStartTime": {
+                "DateTime": "2018-02-08T20:30:00.0000000",
+                "TimeZone": "UTC"
+            },
+            "EventEndTime": {
+                "DateTime": "2018-02-08T21:00:00.0000000",
+                "TimeZone": "UTC"
+            },
+            "EventLocation": {
+                "DisplayName": "foo",
+                "LocationType": "Default",
+                "UniqueId": "foo",
+                "UniqueIdType": "Private"
+            },
+            "ReminderFireTime": {
+                "DateTime": "2018-02-08T20:25:00.0000000",
+                "TimeZone": "UTC"
+            }
+        },
+        {
+            "EventId": "foo",
+            "ChangeKey": "foo",
+            "EventSubject": "foo",
+            "EventWebLink": "https://outlook.office365.com/owa/?itemid=foo&path=/calendar/item",
+            "EventStartTime": {
+                "DateTime": "2018-02-08T21:00:00.0000000",
+                "TimeZone": "UTC"
+            },
+            "EventEndTime": {
+                "DateTime": "2018-02-08T21:30:00.0000000",
+                "TimeZone": "UTC"
+            },
+            "EventLocation": {
+                "DisplayName": "foo",
+                "LocationType": "Default",
+                "UniqueId": "foo",
+                "UniqueIdType": "Private"
+            },
+            "ReminderFireTime": {
+                "DateTime": "2018-02-08T20:45:00.0000000",
+                "TimeZone": "UTC"
+            }
+        }
+    ]
+}
