@@ -18,7 +18,7 @@ Tested on Linux Mint 18.3, but should work on any system/taskbar that responds t
 
 ## Authentication
 
-The application uses [OpenID Connect](https://openid.net/connect/) to fetch an offline token (token + refresh token) on behalf of a user. On initial run, you will have to visit http://localhost:5500/ and then log in to your MS account. After that, the token is stored locally (**not securely** in this version).
+The application uses [OpenID Connect](https://openid.net/connect/) to fetch an offline token (token + refresh token) on behalf of a user. On initial run, you will have to visit http://localhost:5500/token and then log in to your MS account. After that, the token is stored locally (**not securely** in this version).
 
 ## Flags
 
