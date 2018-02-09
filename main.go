@@ -94,6 +94,8 @@ func main() {
 	token := tokenStore.Get()
 	if token != nil {
 		tokenCh <- token
+	} else {
+		notifier.Send("Authentication Required", "Please visit http://localhost:"+*port+" and log in to your MS account")
 	}
 
 	// start up an http server for getting auth tokens
