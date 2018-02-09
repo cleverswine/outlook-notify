@@ -8,6 +8,7 @@ import (
 type Event struct {
 	ID                string        `json:"EventId"`
 	Subject           string        `json:"EventSubject"`
+	WebLink           string        `json:"EventWebLink"`
 	StartTime         EventTime     `json:"EventStartTime"`
 	EndTime           EventTime     `json:"EventEndTime"`
 	ReminderFireTime  EventTime     `json:"ReminderFireTime"`
@@ -18,6 +19,6 @@ type Event struct {
 
 func (evt *Event) String(tz, tf string) string {
 
-	return fmt.Sprintf("%s - %s  %s", evt.StartTime.TimeLocal(tz).Format(tf),
-		evt.EndTime.TimeLocal(tz).Format(tf), evt.Location.DisplayName)
+	return fmt.Sprintf("%s - %s  %s\n%s", evt.StartTime.TimeLocal(tz).Format(tf),
+		evt.EndTime.TimeLocal(tz).Format(tf), evt.Location.DisplayName, evt.WebLink)
 }

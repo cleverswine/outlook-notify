@@ -24,28 +24,32 @@ The application uses [OpenID Connect](https://openid.net/connect/) to fetch an o
 
 ```text
 Usage of ./outlook-notify:
+  -port string
+      host:port to use for this application's http server (default "5500")
+  -tenant string
+      The MS directory to use for login (default "common")
   -client string
       A client that is registered in MS AS with appropraite permissions
   -secret string
       The client secret
-  -tenant string
-      The MS directory to use for login (default "common")
   -lookahead int
       Minutes of lookahead data to get from calendar (default 60)
   -refresh int
       Frequency of refreshing event data from the Graph API in minutes (default 15)
   -ticker int
       Frequency of reminder checks in seconds (default 30)
-  -http string
-      host:port to use for this application's http server (default "localhost:5500")
-  -icon string
-      Icon to use for notifications (default "/usr/share/icons/Mint-X-Dark/status/24/stock_appointment-reminder.png")
   -timeformat string
       Display format for reminder times (default "3:04PM")
   -tz string
       Local time zone (default "America/Los_Angeles")
+  -icon string
+      Icon to use for notifications (default "/usr/share/icons/gnome/32x32/status/appointment-soon.png")
   -debug
       enable verbose logging
+  -dry-run
+      show a test notification
+  -help
+      show help
 ```
 
 ## Example
