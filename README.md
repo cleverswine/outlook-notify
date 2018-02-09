@@ -1,6 +1,6 @@
 # Outlook Reminder Notifications (for Linux)
 
-This application monitors an Office365 Outlook calendar and sends "toast" notifications based on appointment reminder settings.
+This application monitors an Office365 Outlook calendar and shows event reminder alerts based on the event's reminder settings.
 
 Notifications are sent using either the linux command `notify-send` or `zenity` (specified as a command-line argument). If using `notify-send`, alerts will show in the notification area of the taskbar. If using `zenity`, alerts show as a dialog box.
 
