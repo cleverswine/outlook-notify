@@ -13,26 +13,30 @@ import (
 )
 
 type Calendar struct {
-	ch           chan<- *Event
-	oauth2Config *oauth2.Config
-	token        *oauth2.Token
-	tz           string
-	ticker       *time.Ticker
-	eventCache   map[string]*Event
+	oauth2Config    *oauth2.Config
+	tickInterval    time.Duration
+	refreshInterval time.Duration
+	cacheDuration   time.Duration
+	tz              string
+	ch              chan<- *Event
+	eventCache      map[string]*Event
+	ticker          *time.Ticker
 }
 
-func New(token *oauth2.Token, oauth2Config *oauth2.Config, tz string, ch chan<- *Event) *Calendar {
+func New(oauth2Config *oauth2.Config, tickInterval time.Duration, refreshInterval time.Duration, cacheDuration time.Duration, tz string, ch chan<- *Event) *Calendar {
 
 	return &Calendar{
-		token:        token,
-		oauth2Config: oauth2Config,
-		tz:           tz,
-		ch:           ch,
-		eventCache:   map[string]*Event{},
+		oauth2Config:    oauth2Config,
+		tickInterval:    tickInterval,
+		refreshInterval: refreshInterval,
+		cacheDuration:   cacheDuration,
+		tz:              tz,
+		ch:              ch,
+		eventCache:      map[string]*Event{},
 	}
 }
 
-func (s *Calendar) Start(ctx context.Context, tickInterval time.Duration, refreshInterval time.Duration, cacheDuration time.Duration) {
+func (s *Calendar) Start(ctx context.Context, token *oauth2.Token) {
 
 	lastRefresh := time.Now()
 	var toDelete []string
@@ -41,11 +45,11 @@ func (s *Calendar) Start(ctx context.Context, tickInterval time.Duration, refres
 	var i int
 	var err error
 
-	s.ticker = time.NewTicker(tickInterval)
-	log.Printf("starting ticker with interval of %s\n", tickInterval.String())
+	s.ticker = time.NewTicker(s.tickInterval)
+	log.Printf("starting ticker with interval of %s\n", s.tickInterval.String())
 
 	// go ahead and grab first batch
-	err = s.getEvents(ctx, lastRefresh, cacheDuration)
+	err = s.getEvents(ctx, token, lastRefresh, s.cacheDuration)
 	if err != nil {
 		log.Println(err.Error())
 	}
@@ -58,9 +62,9 @@ func (s *Calendar) Start(ctx context.Context, tickInterval time.Duration, refres
 			return
 		case <-s.ticker.C:
 			// see if we need to refresh the event cache
-			if time.Since(lastRefresh) > refreshInterval {
+			if time.Since(lastRefresh) > s.refreshInterval {
 				lastRefresh = time.Now()
-				err = s.getEvents(ctx, lastRefresh, cacheDuration)
+				err = s.getEvents(ctx, token, lastRefresh, s.cacheDuration)
 				if err != nil {
 					log.Println(err.Error())
 				}
@@ -82,13 +86,16 @@ func (s *Calendar) Start(ctx context.Context, tickInterval time.Duration, refres
 
 func (s *Calendar) Stop() {
 
+	if s.ticker == nil {
+		return
+	}
 	log.Println("stopping ticker")
 	s.ticker.Stop()
 }
 
-func (s *Calendar) getEvents(ctx context.Context, start time.Time, d time.Duration) error {
+func (s *Calendar) getEvents(ctx context.Context, token *oauth2.Token, start time.Time, d time.Duration) error {
 
-	client := s.oauth2Config.Client(ctx, s.token)
+	client := s.oauth2Config.Client(ctx, token)
 
 	end := start.Add(d)
 	urlStr := fmt.Sprintf("https://outlook.office.com/api/beta/me/ReminderView(StartDateTime='%s',EndDateTime='%s')",

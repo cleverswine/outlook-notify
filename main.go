@@ -76,18 +76,17 @@ func main() {
 	tokenCh := make(chan *oauth2.Token, 10)
 	defer close(tokenCh)
 	go func() {
-		var cal *calendar.Calendar
+		cal := calendar.New(oauth2Config,
+			time.Second*time.Duration(*tickerIntervalSecs),
+			time.Minute*time.Duration(*refreshIntervalMinutes),
+			time.Minute*time.Duration(*lookAheadIntervalMinutes),
+			*localTZ, ch)
+
 		for token := range tokenCh {
 			log.Println("got a token")
 			tokenStore.Save(token)
-			if cal != nil {
-				cal.Stop()
-			}
-			cal = calendar.New(token, oauth2Config, *localTZ, ch)
-			go cal.Start(ctx,
-				time.Second*time.Duration(*tickerIntervalSecs),
-				time.Minute*time.Duration(*refreshIntervalMinutes),
-				time.Minute*time.Duration(*lookAheadIntervalMinutes))
+			cal.Stop()
+			go cal.Start(ctx, token)
 		}
 	}()
 
@@ -111,10 +110,8 @@ func validateArgs() {
 		flag.Usage()
 		os.Exit(0)
 	}
-
 	if !*dryRun && (*clientID == "" || *clientSecret == "") {
-		flag.Usage()
-		os.Exit(1)
+		log.Fatalln("clientID and clientSecret are required")
 	}
 	if *tickerIntervalSecs < 30 {
 		log.Fatalln("ticker should be >= 30 seconds")
