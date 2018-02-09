@@ -2,19 +2,20 @@
 
 This application monitors an Office365 Outlook calendar and sends "toast" notifications based on appointment reminder settings.
 
-Notifications are sent using the linux command `notify-send` and appear in the notification area of the taskbar.
+Notifications are sent using either the linux command `notify-send` or `zenity` (specified as a command-line argument). If using `notify-send`, alerts will show in the notification area of the taskbar. If using `zenity`, alerts show as a dialog box.
 
-Tested on Linux Mint 18.3, but should work on any system/taskbar that responds to `notify-send`.
+The current implementation stores offline auth tokens as a plain-text json file. This is **not** secure.
 
 ## Install (WIP)
 
-* Set up an application registration in your MS Directory (any directory) with appropriate permissions ("Calendars.Read", "User.Read", "offline_access")
+* Set up an application registration in your MS Directory (any directory) with appropriate permissions ("Calendars.Read", "offline_access")
 * Build the application and run it, passing your application client ID and secret (see "Flags" and "Example" below)
 
 ## Technology
 
 * [Outlook Calendar REST API](https://msdn.microsoft.com/en-us/office/office365/api/calendar-rest-operations)
 * [notify-send](https://ss64.com/bash/notify-send.html)
+* [Zenity](https://help.gnome.org/users/zenity/)
 
 ## Authentication
 

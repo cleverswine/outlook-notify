@@ -57,7 +57,7 @@ func main() {
 		ClientSecret: *clientSecret,
 		Endpoint:     oauth2.Endpoint{AuthURL: authURL + "/authorize", TokenURL: authURL + "/token"},
 		RedirectURL:  "http://localhost:" + *port + "/callback",
-		Scopes:       []string{oidc.ScopeOpenID, "Calendars.Read", "User.Read", "offline_access"},
+		Scopes:       []string{oidc.ScopeOpenID, "Calendars.Read", "offline_access"},
 	}
 
 	// Watch for calendar events
