@@ -25,7 +25,7 @@ The application uses [OpenID Connect](https://openid.net/connect/) to fetch an o
 ```text
 Usage of ./outlook-notify:
   -port string
-      host:port to use for this application's http server (default "5500")
+      Port to use for the application's http server (default "5500")
   -tenant string
       The MS directory to use for login (default "common")
   -client string
@@ -42,14 +42,14 @@ Usage of ./outlook-notify:
       Display format for reminder times (default "3:04PM")
   -tz string
       Local time zone (default "America/Los_Angeles")
-  -icon string
-      Icon to use for notifications (default "/usr/share/icons/gnome/32x32/status/appointment-soon.png")
+  -notifier string
+      Application to use for notifications. options: zenity, notify-send (default "zenity")
   -debug
-      enable verbose logging
+      Enable verbose logging
   -dry-run
-      show a test notification
+      Show a test notification
   -help
-      show help
+      Show this help
 ```
 
 ## Example
